@@ -777,46 +777,76 @@
       startBtn.style.display = 'block';
     }
 
-    // Timer Functions
-    function startTimer() {
-      timeLeft = 120;
-      updateTimerDisplay();
-      timer = setInterval(() => {
-        timeLeft--;
-        updateTimerDisplay();
-        if (timeLeft <= 0) {
-          clearInterval(timer);
-          lockGuessAndShowAnswer();
-        }
-      }, 1000);
+
+function startTimer() {
+  // Clear any existing timer first
+  if (timer) {
+    clearInterval(timer);
+  }
+  
+  timeLeft = 120; // 2 minutes
+  updateTimerDisplay(); // initial display
+
+  timer = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+
+    // Flash red in last 10 seconds
+    if (timeLeft <= 10) {
+      timerDisplay.style.color = timeLeft % 2 === 0 ? "red" : "black"; // blink effect
+    } else {
+      timerDisplay.style.color = "black"; // normal color
     }
 
-    function updateTimerDisplay() {
-      const minutes = Math.floor(timeLeft / 60);
-      const seconds = timeLeft % 60;
-      timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    // Timer ends
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      timerDisplay.style.color = "black"; // reset color
+      lockGuessAndShowAnswer();
     }
+  }, 1000);
+}
 
-    function stopTimer() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
-      }
-    }
+function updateTimerDisplay() {
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+}
+
+function stopTimer() {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  timerDisplay.style.color = "#2d6a4f"; // reset to normal color
+}
 
     // Map Functions
     function setupMap() {
+      // Remove markers from old map if they exist
       if (map) {
+        if (answerMarker && map.hasLayer(answerMarker)) {
+          try { map.removeLayer(answerMarker); } catch(e) { }
+        }
+        if (playerMarker && map.hasLayer(playerMarker)) {
+          try { map.removeLayer(playerMarker); } catch(e) { }
+        }
+        if (line && map.hasLayer(line)) {
+          try { map.removeLayer(line); } catch(e) { }
+        }
+        // Now remove the map itself
         map.remove();
       }
       
-      if (answerMarker && map && map.hasLayer && map.hasLayer(answerMarker)) {
-        try { map.removeLayer(answerMarker); } catch(e) { }
-      }
-      if (playerMarker && map && map.hasLayer && map.hasLayer(playerMarker)) {
-        try { map.removeLayer(playerMarker); } catch(e) { }
-      }
+      // Reset marker references
+      playerMarker = null;
+      answerMarker = null;
+      guessLatLng = null;
+      line = null;
+      mapLocked = false;
+      document.getElementById('distanceInfo').style.display = 'none';
       
+      // Create new map
       map = L.map('map', {
         zoomControl: true,
         attributionControl: true,
@@ -839,13 +869,6 @@
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
         shadowSize: [41, 41]
       });
-      
-      playerMarker = null;
-      answerMarker = null;
-      guessLatLng = null;
-      line = null;
-      mapLocked = false;
-      document.getElementById('distanceInfo').style.display = 'none';
       
       map.on('click', function(e) {
         if (mapLocked) return;
