@@ -305,7 +305,6 @@
     <div class="score-summary" id="scoreSummary">
       <h3>Round Complete!</h3>
       <div id="scoreBreakdown"></div>
-      <div>Round Score: <span id="roundScore">0</span> points</div>
     </div>
     
     <button id="nextRoundBtn" style="margin-top: 1rem; padding: 0.7rem 2rem; background: #2d6a4f; color: white; border: none; border-radius: 8px; cursor: pointer; display: none;">Next Round</button>
@@ -327,7 +326,6 @@
     const mapContainer = document.getElementById('map');
     const scoreSummary = document.getElementById('scoreSummary');
     const scoreBreakdown = document.getElementById('scoreBreakdown');
-    const roundScoreDisplay = document.getElementById('roundScore');
     const nextRoundBtn = document.getElementById('nextRoundBtn');
     const totalScoreDisplay = document.getElementById('totalScore');
     const continueBtn = document.getElementById('continueBtn');
@@ -1058,7 +1056,6 @@
         alert("No guess placed! You score 0 points for this round.");
         scoreSummary.classList.add('show');
         scoreBreakdown.innerHTML = "No guess placed";
-        roundScoreDisplay.textContent = "0";
         
         if (currentLandmarkIndex >= shuffledLandmarks.length - 1) {
           nextRoundBtn.style.display = 'inline-block';
@@ -1100,7 +1097,11 @@
       const basePoints = pointsForDistance(distanceKm);
       const hintPenalty = hintsUsedThisRound * 25;
       const netRoundScore = Math.max(0, basePoints - hintPenalty);
+      
+      console.log('Previous total score:', totalScore);
+      console.log('Round score:', netRoundScore);
       totalScore += netRoundScore;
+      console.log('New total score:', totalScore);
       
       document.getElementById('distanceValue').textContent = distanceKm.toFixed(2) + " km";
       document.getElementById('distanceInfo').style.display = 'inline';
@@ -1108,9 +1109,10 @@
       scoreBreakdown.innerHTML = `
         Distance: ${distanceKm.toFixed(2)} km<br>
         Base Points: ${basePoints}<br>
-        Hint Penalty: -${hintPenalty}
+        Hint Penalty: -${hintPenalty}<br>
+        <strong>Round Score: ${netRoundScore} points</strong><br>
+        <strong style="color: #2d6a4f; font-size: 1.2em;">Total Score: ${totalScore} points</strong>
       `;
-      roundScoreDisplay.textContent = netRoundScore;
       totalScoreDisplay.textContent = totalScore;
       scoreSummary.classList.add('show');
       
