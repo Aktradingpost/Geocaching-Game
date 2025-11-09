@@ -202,6 +202,32 @@
       margin-left: 0.5rem;
     }
     
+    /* Continue Button */
+    #continueBtn {
+      margin-top: 1rem;
+      padding: 0.8rem 2rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(90deg, #f9844a, #f9c74f);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+      transition: background 0.2s, transform 0.15s;
+      letter-spacing: 1px;
+      display: none;
+    }
+    #continueBtn:hover {
+      background: linear-gradient(90deg, #f9c74f, #f9844a);
+      transform: scale(1.04);
+    }
+    #continueBtn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
     /* Score */
     .score-summary { 
       display: none; 
@@ -274,6 +300,8 @@
       <div id="map"></div>
     </div>
     
+    <button id="continueBtn">Made My Guess, Continue</button>
+    
     <div class="score-summary" id="scoreSummary">
       <h3>Round Complete!</h3>
       <div id="scoreBreakdown"></div>
@@ -302,6 +330,7 @@
     const roundScoreDisplay = document.getElementById('roundScore');
     const nextRoundBtn = document.getElementById('nextRoundBtn');
     const totalScoreDisplay = document.getElementById('totalScore');
+    const continueBtn = document.getElementById('continueBtn');
 
     // Game Data
     const characters = [
@@ -315,7 +344,7 @@
       { name: "Discoverer", emoji: "🔍" }
     ];
 
-    const landmarks = [
+    const landmarksData = [
       {
         name: "Eiffel Tower",
         latitude: 48.8584,
@@ -752,6 +781,17 @@
     let guessLatLng = null;
     let line = null;
     let mapLocked = false;
+    let shuffledLandmarks = [];
+
+    // Shuffle function (Fisher-Yates algorithm)
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
 
     // Character Selection Functions
     function renderAvatars() {
@@ -777,49 +817,48 @@
       startBtn.style.display = 'block';
     }
 
+    function startTimer() {
+      // Clear any existing timer first
+      if (timer) {
+        clearInterval(timer);
+      }
+      
+      timeLeft = 120; // 2 minutes
+      updateTimerDisplay(); // initial display
 
-function startTimer() {
-  // Clear any existing timer first
-  if (timer) {
-    clearInterval(timer);
-  }
-  
-  timeLeft = 120; // 2 minutes
-  updateTimerDisplay(); // initial display
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
 
-  timer = setInterval(() => {
-    timeLeft--;
-    updateTimerDisplay();
+        // Flash red in last 10 seconds
+        if (timeLeft <= 10) {
+          timerDisplay.style.color = timeLeft % 2 === 0 ? "red" : "black"; // blink effect
+        } else {
+          timerDisplay.style.color = "black"; // normal color
+        }
 
-    // Flash red in last 10 seconds
-    if (timeLeft <= 10) {
-      timerDisplay.style.color = timeLeft % 2 === 0 ? "red" : "black"; // blink effect
-    } else {
-      timerDisplay.style.color = "black"; // normal color
+        // Timer ends
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          timerDisplay.style.color = "black"; // reset color
+          lockGuessAndShowAnswer();
+        }
+      }, 1000);
     }
 
-    // Timer ends
-    if (timeLeft <= 0) {
-      clearInterval(timer);
-      timerDisplay.style.color = "black"; // reset color
-      lockGuessAndShowAnswer();
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     }
-  }, 1000);
-}
 
-function updateTimerDisplay() {
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-}
-
-function stopTimer() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-  timerDisplay.style.color = "#2d6a4f"; // reset to normal color
-}
+    function stopTimer() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      timerDisplay.style.color = "#2d6a4f"; // reset to normal color
+    }
 
     // Map Functions
     function setupMap() {
@@ -884,6 +923,8 @@ function stopTimer() {
           line = null; 
           document.getElementById('distanceInfo').style.display = 'none'; 
         }
+        // Enable continue button when guess is placed
+        continueBtn.disabled = false;
       });
     }
 
@@ -934,6 +975,7 @@ function stopTimer() {
     function endGame() {
       stopTimer();
       mapLocked = true;
+      continueBtn.style.display = 'none';
       scoreSummary.classList.add('show');
       scoreBreakdown.innerHTML = `<strong>Game Over</strong><br>Total Score: ${totalScore}`;
       nextRoundBtn.style.display = 'none';
@@ -947,13 +989,15 @@ function stopTimer() {
       totalScore = 0;
       totalScoreDisplay.textContent = totalScore;
       currentLandmarkIndex = -1;
+      // Shuffle landmarks at the start of each new game
+      shuffledLandmarks = shuffleArray(landmarksData);
       characterSelectContainer.classList.add('hidden');
       gameContainer.classList.remove('hidden');
       startNewRound();
     }
 
     function startNewRound() {
-      if (currentLandmarkIndex >= landmarks.length - 1) {
+      if (currentLandmarkIndex >= shuffledLandmarks.length - 1) {
         endGame();
         return;
       }
@@ -961,8 +1005,10 @@ function stopTimer() {
       hintsUsedThisRound = 0;
       scoreSummary.classList.remove('show');
       nextRoundBtn.style.display = 'none';
+      continueBtn.style.display = 'block';
+      continueBtn.disabled = true;
       
-      currentLandmark = landmarks[currentLandmarkIndex];
+      currentLandmark = shuffledLandmarks[currentLandmarkIndex];
       console.log('Selected landmark for round (index ' + currentLandmarkIndex + '):', currentLandmark);
       
       try { landmarkPhoto.removeAttribute('src'); } catch(e) { landmarkPhoto.src = ''; }
@@ -1008,13 +1054,14 @@ function stopTimer() {
     function lockGuessAndShowAnswer() {
       mapLocked = true;
       stopTimer();
+      continueBtn.style.display = 'none';
       
       if (!guessLatLng) {
         alert("No guess placed! You score 0 points for this round.");
         scoreSummary.classList.add('show');
         scoreBreakdown.innerHTML = "No guess placed";
         roundScoreDisplay.textContent = "0";
-        if (currentLandmarkIndex >= landmarks.length - 1) {
+        if (currentLandmarkIndex >= shuffledLandmarks.length - 1) {
           nextRoundBtn.style.display = 'inline-block';
           nextRoundBtn.textContent = 'Finish Game';
           nextRoundBtn.onclick = function() { endGame(); };
@@ -1071,7 +1118,7 @@ function stopTimer() {
       const bounds = L.latLngBounds([guessLatLng, answerLatLng]);
       map.fitBounds(bounds.pad(0.3));
       
-      if (currentLandmarkIndex >= landmarks.length - 1) {
+      if (currentLandmarkIndex >= shuffledLandmarks.length - 1) {
         nextRoundBtn.style.display = 'inline-block';
         nextRoundBtn.textContent = 'Finish Game';
         nextRoundBtn.onclick = function() { endGame(); };
@@ -1085,6 +1132,7 @@ function stopTimer() {
     // Event Listeners
     startBtn.addEventListener('click', startGame);
     nextRoundBtn.addEventListener('click', startNewRound);
+    continueBtn.addEventListener('click', lockGuessAndShowAnswer);
 
     // Initialize
     renderAvatars();
